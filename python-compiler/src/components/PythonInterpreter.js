@@ -96,7 +96,7 @@ const PythonInterpreter = () => {
       {/* Sol Panel */}
       <div style={{ width: "300px", background: "#1e1e1e", color: "white", padding: "10px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <strong style={{ color: "#c586c0" }}>SCENARIOS</strong>
+          <strong style={{ color: "#c586c0" }}>GalacDUS</strong>
           <div style={{ display: "flex", gap: "10px" }}>
             <FiFilePlus
               onClick={() => {
@@ -262,6 +262,7 @@ const PythonInterpreter = () => {
       {/* Sağ Panel */}
       <div style={{ flexGrow: 1, backgroundColor: "#272822" }}>
         <div style={{ marginTop: "10px" ,  marginBottom:"10px", display: "flex", justifyContent: "flex-end", alignItems: "center"}}>
+        <div >
           <button
             onClick={runPythonCode}
             style={{ backgroundColor:"green", padding: "10px 20px", fontSize: "16px", cursor: "pointer"  }}
@@ -274,25 +275,42 @@ const PythonInterpreter = () => {
           >
             Save
           </button>
+          <button
+            onClick={saveFile}
+            style={{  backgroundColor:"green", padding: "10px 20px", fontSize: "16px", cursor: "pointer" }}
+          >
+            Debug
+          </button>          
         </div>
-        <AceEditor
-          mode="python"
-          theme="monokai"
-          name="python_ace_editor"
-          value={pythonCode}
-          onChange={(newValue) => setPythonCode(newValue)}
-          editorProps={{ $blockScrolling: true }}
-          setOptions={{
-            useWorker: false,
-            fontSize: 16,
-            showPrintMargin: false,
-            showLineNumbers: true,
-            tabSize: 2,
-          }}
-          style={{ width: "100%", height: "93%", marginBottom: "10px" }}
-        />
-        <h2>Output:</h2>
-        <pre style={{ background: "#eaeaea", padding: "10px" }}>{output}</pre>
+        </div>
+        <h1 style={{ marginTop: "1px" , width:"100px",  marginBottom:"1px", display: "flex",color:"whitesmoke",fontSize:"20px",border:"1px solid #333"}}>file.name</h1>
+        <div style={{ display: "flex", height: "87%", borderTop: "1px solid #555",borderBottom:"1px solid #555" }}>
+          {/* Sol: Editör */}
+          <div style={{ flex: 1 }}>
+            <AceEditor
+              mode="python"
+              theme="monokai"
+              name="python_ace_editor"
+              value={pythonCode}
+              onChange={(newValue) => setPythonCode(newValue)}
+              editorProps={{ $blockScrolling: true }}
+              setOptions={{
+                useWorker: false,
+                fontSize: 16,
+                showPrintMargin: false,
+                showLineNumbers: true,
+                tabSize: 2,
+              }}
+              style={{ width: "100%", height: "100%",borderRight:"1px solid #555" }}
+            />
+          </div>
+          {/* Sağ: Output */}
+          <div style={{ flex: 1, background: "#272822"}}>
+            <pre style={{ background: "#272822",  margin:"0px", overflow: "auto", height:"100%",fontSize:"20px",color:"whitesmoke", paddingLeft: "5px" }}>
+              {output}
+            </pre>
+          </div>
+        </div>
       </div>
     </div>
   );
