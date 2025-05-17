@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef  } from "react";
 import { jsPython } from "jspython-interpreter";
 import { FiFilePlus, FiFolderPlus, FiRefreshCw, FiShare2 } from "react-icons/fi";
 import AceEditor from "react-ace";
@@ -17,6 +17,11 @@ const PythonInterpreter = () => {
   const [newFileName, setNewFileName] = useState("");
   const [targetFolder, setTargetFolder] = useState(null);
   const [openFolders, setOpenFolders] = useState({});
+  const [debugMode, setDebugMode] = useState(false);
+  const [debugLines, setDebugLines] = useState([]);
+  const [currentLine, setCurrentLine] = useState(0);
+  const breakpointsRef = useRef([]);
+  const aceRef = useRef();
 
   const runPythonCode = async () => {
     try {
@@ -31,6 +36,46 @@ const PythonInterpreter = () => {
 
       await interpreter.evaluate(pythonCode);
       setOutput(stdout.join(""));
+    } catch (error) {
+      setOutput(`Error: ${error.message}`);
+    }
+  };
+
+  const startDebug = () => {
+    setDebugMode(true);
+    const lines = pythonCode.split("\n");
+    setDebugLines(lines);
+    setCurrentLine(0);
+    setOutput("");
+  };
+
+  const stepDebug = async () => {
+    if (currentLine >= debugLines.length) {
+      setDebugMode(false);
+      return;
+    }
+
+    try {
+      while (currentLine < debugLines.length &&
+             breakpointsRef.current.length > 0 &&
+             !breakpointsRef.current.includes(currentLine)) {
+        setCurrentLine((prev) => prev + 1);
+        return;
+      }
+
+      const interpreter = jsPython();
+      let stdout = [];
+
+      interpreter.assignGlobalContext({
+        print: (...args) => {
+          stdout.push(args.join(" "), "\n");
+        },
+      });
+
+      const codeToRun = debugLines.slice(0, currentLine + 1).join("\n");
+      await interpreter.evaluate(codeToRun);
+      setOutput(stdout.join(""));
+      setCurrentLine((prev) => prev + 1);
     } catch (error) {
       setOutput(`Error: ${error.message}`);
     }
@@ -92,8 +137,14 @@ const PythonInterpreter = () => {
   };
 
   return (
-    <div style={{ display: "flex", height: "100vh", fontFamily: "Arial, sans-serif" }}>
-      {/* Sol Panel */}
+    <div style={{ display: "flex", height: "100vh", fontFamily: "Arial, sans-serif", position: "relative" }}>
+      {debugMode && (
+        <div style={{ position: "absolute", top: "10px", left: "50%", transform: "translateX(-50%)", zIndex: 10, backgroundColor: "#333", padding: "10px", borderRadius: "8px" }}>
+          <button onClick={stepDebug} style={{ marginRight: "10px", padding: "6px 12px", fontSize: "14px" }}>Step</button>
+          <button onClick={() => setDebugMode(false)} style={{ padding: "6px 12px", fontSize: "14px" }}>Stop</button>
+        </div>
+      )}
+
       <div style={{ width: "300px", background: "#1e1e1e", color: "white", padding: "10px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <strong style={{ color: "#c586c0" }}>GalacDUS</strong>
@@ -121,7 +172,7 @@ const PythonInterpreter = () => {
               value={newFileName}
               onChange={(e) => setNewFileName(e.target.value)}
               placeholder={`Yeni ${inputType === "folder" ? "klasör" : "dosya"} adı`}
-              style={{ width: "100%", padding: "5px", fontSize: "14px" }}
+              style={{ width: "90%", padding: "5px", fontSize: "14px",backgroundColor:"#272822",color:"whitesmoke",border:"1px solid #555",borderRadius:"4px" }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   inputType === "folder" ? addFolder() : saveFile();
@@ -259,56 +310,61 @@ const PythonInterpreter = () => {
         </div>
       </div>
 
-      {/* Sağ Panel */}
       <div style={{ flexGrow: 1, backgroundColor: "#272822" }}>
-        <div style={{ marginTop: "10px" ,  marginBottom:"10px", display: "flex", justifyContent: "flex-end", alignItems: "center"}}>
-        <div >
-          <button
-            onClick={runPythonCode}
-            style={{ backgroundColor:"green", padding: "10px 20px", fontSize: "16px", cursor: "pointer"  }}
-          >
-            Run
-          </button>
-          <button
-            onClick={saveFile}
-            style={{  backgroundColor:"green", padding: "10px 20px", fontSize: "16px", cursor: "pointer" }}
-          >
-            Save
-          </button>
-          <button
-            onClick={saveFile}
-            style={{  backgroundColor:"green", padding: "10px 20px", fontSize: "16px", cursor: "pointer" }}
-          >
-            Debug
-          </button>          
+        <div style={{ marginTop: "10px", marginBottom: "10px", display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
+          <div>
+            <button onClick={runPythonCode} style={{ backgroundColor: "green", padding: "10px 20px", fontSize: "16px", cursor: "pointer" }}>Run</button>
+            <button onClick={saveFile} style={{ backgroundColor: "green", padding: "10px 20px", fontSize: "16px", cursor: "pointer" }}>Save</button>
+            <button onClick={startDebug} style={{ backgroundColor: "orange", padding: "10px 20px", fontSize: "16px", cursor: "pointer" }}>Debug</button>
+          </div>
         </div>
-        </div>
-        <h1 style={{ marginTop: "1px" , width:"100px",  marginBottom:"1px", display: "flex",color:"whitesmoke",fontSize:"20px",border:"1px solid #333"}}>file.name</h1>
-        <div style={{ display: "flex", height: "87%", borderTop: "1px solid #555",borderBottom:"1px solid #555" }}>
-          {/* Sol: Editör */}
+
+        <h1 style={{ marginTop: "1px", width: "100px", marginBottom: "1px", display: "flex", color: "whitesmoke", fontSize: "20px", border: "1px solid #333" }}>{openEditor || "file.name"}</h1>
+
+        <div style={{ display: "flex", height: "87%", borderTop: "1px solid #555", borderBottom: "1px solid #555" }}>
           <div style={{ flex: 1 }}>
             <AceEditor
               mode="python"
               theme="monokai"
               name="python_ace_editor"
               value={pythonCode}
+              ref={aceRef}
               onChange={(newValue) => setPythonCode(newValue)}
               editorProps={{ $blockScrolling: true }}
+              highlightActiveLine={true}
+              highlightGutterLine={true}
               setOptions={{
                 useWorker: false,
-                fontSize: 16,
+                fontSize: 18,
                 showPrintMargin: false,
                 showLineNumbers: true,
                 tabSize: 2,
               }}
-              style={{ width: "100%", height: "100%",borderRight:"1px solid #555" }}
+              onLoad={(editor) => {
+                aceRef.current = { editor }; 
+                editor.on("guttermousedown", function (e) {
+                  const target = e.domEvent.target;
+                  if (target.className.indexOf("ace_gutter-cell") === -1) return;
+                  const row = e.getDocumentPosition().row;
+                  const breakpoints = editor.session.getBreakpoints();
+
+                  if (typeof breakpoints[row] === "undefined") {
+                    editor.session.setBreakpoint(row);
+                    if (!breakpointsRef.current.includes(row)) {
+                      breakpointsRef.current.push(row);
+                    }
+                  } else {
+                    editor.session.clearBreakpoint(row);
+                    breakpointsRef.current = breakpointsRef.current.filter((r) => r !== row);
+                  }
+                  e.stop();
+                });
+              }}
+              style={{ width: "100%", height: "100%", borderRight: "1px solid #555" }}
             />
           </div>
-          {/* Sağ: Output */}
-          <div style={{ flex: 1, background: "#272822"}}>
-            <pre style={{ background: "#272822",  margin:"0px", overflow: "auto", height:"100%",fontSize:"20px",color:"whitesmoke", paddingLeft: "5px" }}>
-              {output}
-            </pre>
+          <div style={{ flex: 1, background: "#272822" }}>
+            <pre style={{ background: "#272822", margin: "0px", overflow: "auto", height: "100%", fontSize: "20px", color: "whitesmoke", paddingLeft: "5px" }}>{output}</pre>
           </div>
         </div>
       </div>
